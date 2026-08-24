@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 import joblib
 from fastapi import FastAPI
 
+from app.models.schemas import PredictionInput
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,8 +28,13 @@ def root():
 
 
 @app.post("/predict")
-def predict():
-    features = [[6.0, 3.0, 4.8, 1.8]]
+def predict(data: PredictionInput):
+    features = [[
+        data.sepal_length,
+        data.sepal_width,
+        data.petal_length,
+        data.petal_width
+    ]]
 
     prediction = app.state.model.predict(features)
 

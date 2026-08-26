@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
+import time
 import uuid
 
 import joblib
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.logging_config import setup_logging
 from app.models.schemas import PredictionInput, PredictionOutput
 
 
@@ -12,15 +14,18 @@ class PredictionError(Exception):
     pass
 
 
+logger = setup_logging()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading ML model...")
+    logger.info("Loading ML model...")
 
     app.state.model = joblib.load(
         "ml/saved_model/model.joblib"
     )
 
-    print("ML model loaded successfully!")
+    logger.info("ML model loaded successfully!")
 
     yield
 
@@ -28,8 +33,30 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    start_time = time.perf_counter()
+
+    response = await call_next(request)
+
+    duration = time.perf_counter() - start_time
+
+    logger.info(
+        f"request_id={request_id} "
+        f"method={request.method} "
+        f"path={request.url.path} "
+        f"status_code={response.status_code} "
+        f"duration={duration:.4f}s"
+    )
+
+    return response
+
+
 @app.exception_handler(PredictionError)
-async def prediction_error_handler(request, exc):
+async def prediction_error_handler(request: Request, exc):
     return JSONResponse(
         status_code=500,
         content={"detail": "Prediction failed"}
@@ -52,7 +79,12 @@ def health():
 
 
 @app.post("/predict", response_model=PredictionOutput)
-def predict(data: PredictionInput):
+def predict(
+    data: PredictionInput,
+    request: Request
+):
+    request_id = request.state.request_id
+
     features = [[
         data.sepal_length,
         data.sepal_width,
@@ -60,16 +92,24 @@ def predict(data: PredictionInput):
         data.petal_width
     ]]
 
-    request_id = str(uuid.uuid4())
-
     try:
         prediction = app.state.model.predict(features)
         probabilities = app.state.model.predict_proba(features)
 
         confidence = max(probabilities[0])
 
+        logger.info(
+            f"prediction_success "
+            f"request_id={request_id} "
+            f"prediction={int(prediction[0])}"
+        )
+
     except Exception as e:
-        print(f"Prediction error: {e}")
+        logger.error(
+            f"prediction_failed "
+            f"request_id={request_id} "
+            f"error={e}"
+        )
         raise PredictionError()
 
     return {
@@ -77,4 +117,4 @@ def predict(data: PredictionInput):
         "confidence": float(confidence),
         "model_version": "1.0",
         "request_id": request_id
-    } 
+    }

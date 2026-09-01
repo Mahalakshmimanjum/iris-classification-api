@@ -6,11 +6,10 @@ import joblib
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.exceptions import PredictionError
 from app.logging_config import setup_logging
 from app.routers.v1 import router as v1_router
-
-
 
 
 logger = setup_logging()
@@ -19,9 +18,10 @@ logger = setup_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Loading ML model...")
+    logger.info(f"Model path: {settings.MODEL_PATH}")
 
     app.state.model = joblib.load(
-        "ml/saved_model/model.joblib"
+        settings.MODEL_PATH
     )
 
     logger.info("ML model loaded successfully!")
@@ -29,7 +29,10 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title=settings.API_TITLE,
+    lifespan=lifespan
+)
 
 
 @app.middleware("http")

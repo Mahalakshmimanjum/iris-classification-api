@@ -1,7 +1,8 @@
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 
+from app.config import settings
 from app.exceptions import PredictionError
 from app.logging_config import setup_logging
 from app.models.schemas import (
@@ -81,6 +82,25 @@ def predict_batch(
     request_id = request.state.request_id
     start_time = time.perf_counter()
 
+    batch_size = len(data.inputs)
+
+    # Enforce maximum batch size from configuration
+    if batch_size > settings.MAX_BATCH_SIZE:
+        logger.warning(
+            f"batch_size_exceeded "
+            f"request_id={request_id} "
+            f"batch_size={batch_size} "
+            f"max_batch_size={settings.MAX_BATCH_SIZE}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Batch size cannot exceed "
+                f"{settings.MAX_BATCH_SIZE} items."
+            )
+        )
+
     try:
         model = request.app.state.model
 
@@ -94,6 +114,7 @@ def predict_batch(
             for item in data.inputs
         ]
 
+        # Predict the entire batch in one model call
         predictions = model.predict(features)
         probabilities = model.predict_proba(features)
 
@@ -117,7 +138,7 @@ def predict_batch(
         logger.info(
             f"batch_prediction_success "
             f"request_id={request_id} "
-            f"batch_size={len(data.inputs)} "
+            f"batch_size={batch_size} "
             f"duration={duration:.4f}s"
         )
 
@@ -131,7 +152,7 @@ def predict_batch(
         logger.error(
             f"batch_prediction_failed "
             f"request_id={request_id} "
-            f"batch_size={len(data.inputs)} "
+            f"batch_size={batch_size} "
             f"duration={duration:.4f}s "
             f"error={e}"
         )

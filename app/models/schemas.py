@@ -10,6 +10,7 @@ class PredictionInput(BaseModel):
     petal_width: float = Field(..., gt=0)
 
 
+# v1 response schema
 class PredictionOutput(BaseModel):
     prediction: int
     confidence: float
@@ -23,3 +24,11 @@ class PredictionBatchInput(BaseModel):
 
 class PredictionBatchOutput(BaseModel):
     predictions: List[PredictionOutput]
+
+
+# v2 response schema
+class PredictionV2Output(BaseModel):
+    prediction: int
+    probabilities: dict[str, float]
+    model_version: str
+    request_id: str

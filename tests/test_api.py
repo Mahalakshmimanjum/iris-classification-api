@@ -131,3 +131,47 @@ def test_model_info(client):
     assert "features" in data
 
     assert data["model_version"] == "1.0"
+
+
+def test_v1_and_v2_have_different_response_shapes(client):
+    payload = {
+        "sepal_length": 5.1,
+        "sepal_width": 3.5,
+        "petal_length": 1.4,
+        "petal_width": 0.2
+    }
+
+    v1_response = client.post(
+        "/api/v1/predict",
+        json=payload
+    )
+
+    v2_response = client.post(
+        "/api/v2/predict",
+        json=payload
+    )
+
+    assert v1_response.status_code == 200
+    assert v2_response.status_code == 200
+
+    v1_data = v1_response.json()
+    v2_data = v2_response.json()
+
+    # Both versions should return a valid prediction
+    assert v1_data["prediction"] in [0, 1, 2]
+    assert v2_data["prediction"] in [0, 1, 2]
+
+    # v1 uses confidence
+    assert "confidence" in v1_data
+    assert "probabilities" not in v1_data
+
+    # v2 uses full probability distribution
+    assert "probabilities" in v2_data
+    assert "confidence" not in v2_data
+
+    # Version identifiers are different
+    assert v1_data["model_version"] == "1.0"
+    assert v2_data["model_version"] == "2.0"
+
+    # Prove the response shapes are different
+    assert set(v1_data.keys()) != set(v2_data.keys())

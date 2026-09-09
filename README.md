@@ -84,6 +84,8 @@ The project supports multiple API versions:
 ```text
 User Request
      ↓
+API Key Authentication
+     ↓
 Input Validation
      ↓
 Machine Learning Model
@@ -110,6 +112,86 @@ explainability/
 
 This helps understand which features contribute most to the model's predictions.
 
+## Security and Robustness
+
+### API Key Authentication
+
+The API requires a valid `X-API-Key` header for protected requests.
+
+The API key is stored in the `.env` file and loaded through application settings. It is not hardcoded in the application code.
+
+Example request header:
+
+```text
+X-API-Key: your-secret-api-key
+```
+
+Requests with a missing or invalid API key are rejected with:
+
+```json
+{
+  "detail": "Invalid or missing API key"
+}
+```
+
+and HTTP status:
+
+```text
+401 Unauthorized
+```
+
+### Input Validation
+
+The API uses Pydantic validation to reject malformed input.
+
+The prediction input follows these validation rules:
+
+* All four feature values must be greater than zero.
+* Empty or invalid values are rejected.
+* Unexpected fields are rejected using `extra="forbid"`.
+* Invalid request data returns HTTP `422 Unprocessable Entity`.
+
+For example, the following request is rejected because `unexpected_field` is not part of the schema:
+
+```json
+{
+  "sepal_length": 5.1,
+  "sepal_width": 3.5,
+  "petal_length": 1.4,
+  "petal_width": 0.2,
+  "unexpected_field": "not_allowed"
+}
+```
+
+### CORS Configuration
+
+Cross-Origin Resource Sharing (CORS) is configured using explicitly allowed origins.
+
+The allowed origins are stored in the `ALLOWED_ORIGINS` environment variable instead of allowing all origins.
+
+Example:
+
+```env
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+This prevents unauthorized browser origins from accessing the API through cross-origin requests.
+
+### Rate Limiting
+
+Rate limiting is an important security mechanism used to prevent excessive requests and reduce API abuse.
+
+This project documents the rate-limiting concept but does not implement a production-grade rate limiter.
+
+For a production deployment, rate limiting could be implemented using:
+
+* Redis-based rate limiting
+* An API gateway
+* Reverse proxy rate limiting
+* A dedicated FastAPI rate-limiting library
+
+A production rate limiter should limit requests based on factors such as API key, client IP, or user identity.
+
 ## Project Structure
 
 ```text
@@ -118,8 +200,11 @@ iris-classification-api/
 ├── app/
 │   ├── main.py
 │   ├── config.py
+│   ├── security.py
 │   ├── exceptions.py
 │   ├── logging_config.py
+│   ├── models/
+│   │   └── schemas.py
 │   └── routers/
 │       ├── v1.py
 │       └── v2.py
@@ -141,6 +226,7 @@ iris-classification-api/
 ├── .dockerignore
 ├── requirements.txt
 ├── .env
+├── .env.example
 └── README.md
 ```
 
@@ -165,9 +251,13 @@ MODEL_PATH=ml/saved_model/model.joblib
 LOG_LEVEL=INFO
 MAX_BATCH_SIZE=100
 API_TITLE=Iris Classification API
+API_KEY=your-secret-api-key
+ALLOWED_ORIGINS=http://localhost:3000
 ```
 
-Do not commit the `.env` file to GitHub because it may contain environment-specific or sensitive configuration.
+The `API_KEY` should be replaced with a secure secret value.
+
+Do not commit the `.env` file to GitHub because it may contain sensitive configuration.
 
 ## Run Using Docker Compose
 
@@ -199,6 +289,8 @@ From Swagger UI, you can test:
 /api/v1/predict-batch
 ```
 
+For protected endpoints, provide the required `X-API-Key` header.
+
 ### Stop the Application
 
 To stop the containers:
@@ -223,8 +315,22 @@ This separates the model storage from the application container. A retrained mod
 To run the automated tests locally:
 
 ```bash
-pytest
+python -m pytest
 ```
+
+The test suite covers:
+
+* Health endpoint
+* Valid predictions
+* Invalid input
+* Missing input fields
+* Batch predictions
+* Batch size limits
+* Model information
+* V1 and V2 response differences
+* Missing API key
+* Invalid API key
+* Unexpected extra fields
 
 ## Docker Image
 
@@ -250,6 +356,7 @@ The API listens on `0.0.0.0` inside the container so that it can accept connecti
 * FastAPI
 * Uvicorn
 * Pydantic
+* Pydantic Settings
 * Scikit-learn
 * NumPy
 * Pandas

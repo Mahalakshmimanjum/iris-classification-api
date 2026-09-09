@@ -192,6 +192,84 @@ For a production deployment, rate limiting could be implemented using:
 
 A production rate limiter should limit requests based on factors such as API key, client IP, or user identity.
 
+## Data Validation and Pipeline Robustness
+
+The project includes a reusable `predict_new_customer()` function for making predictions on new and potentially messy input data.
+
+The function is available in:
+
+```text
+app/prediction.py
+```
+
+### Prediction Validation
+
+Before sending data to the machine learning model, the function validates:
+
+* Required fields are present.
+* Input values are numeric.
+* Values are finite numbers.
+* Feature values are greater than zero.
+* Invalid input is rejected with a clear error message.
+
+This prevents invalid data from reaching the ML model and reduces the risk of incorrect or meaningless predictions.
+
+### Example Valid Input
+
+```python
+{
+    "sepal_length": 5.1,
+    "sepal_width": 3.5,
+    "petal_length": 1.4,
+    "petal_width": 0.2
+}
+```
+
+The function validates the input and returns the probability of the predicted class.
+
+### Invalid Input Handling
+
+The function safely handles different types of invalid data.
+
+#### Missing Field
+
+```text
+ValueError: Missing required fields: petal_width
+```
+
+#### Wrong Data Type
+
+```text
+ValueError: sepal_length must be a number.
+```
+
+#### Negative Value
+
+```text
+ValueError: sepal_length must be greater than 0.
+```
+
+Instead of silently producing a prediction, the function raises a clear error explaining what is wrong with the input.
+
+### Automated Testing
+
+The robustness of the prediction function is verified using Pytest.
+
+Tests cover:
+
+* Valid new customer/flower prediction
+* Missing required fields
+* Wrong data types
+* Negative feature values
+
+The dedicated tests are located in:
+
+```text
+tests/test_prediction.py
+```
+
+All four dedicated robustness tests pass successfully.
+
 ## Project Structure
 
 ```text
@@ -201,10 +279,13 @@ iris-classification-api/
 │   ├── main.py
 │   ├── config.py
 │   ├── security.py
+│   ├── prediction.py
 │   ├── exceptions.py
 │   ├── logging_config.py
+│   │
 │   ├── models/
 │   │   └── schemas.py
+│   │
 │   └── routers/
 │       ├── v1.py
 │       └── v2.py
@@ -220,6 +301,9 @@ iris-classification-api/
 │   └── lime_sample_2.html
 │
 ├── tests/
+│   ├── conftest.py
+│   ├── test_api.py
+│   └── test_prediction.py
 │
 ├── Dockerfile
 ├── docker-compose.yml
@@ -331,6 +415,10 @@ The test suite covers:
 * Missing API key
 * Invalid API key
 * Unexpected extra fields
+* Valid new data prediction
+* Missing fields in new data
+* Wrong data types
+* Negative feature values
 
 ## Docker Image
 

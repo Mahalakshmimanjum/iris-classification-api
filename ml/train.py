@@ -2,6 +2,7 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+from sklearn.pipeline import Pipeline
 import joblib
 
 
@@ -21,27 +22,32 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-# 3. Create the machine learning model
-model = RandomForestClassifier(
-    random_state=42
-)
+# 3. Create a reusable machine learning pipeline
+pipeline = Pipeline([
+    ("model", RandomForestClassifier(
+        random_state=42
+    ))
+])
 
 
-# 4. Train the model
-model.fit(X_train, y_train)
+# 4. Train the pipeline
+pipeline.fit(X_train, y_train)
 
 
 # 5. Make predictions on test data
-y_pred = model.predict(X_test)
+y_pred = pipeline.predict(X_test)
 
 
 # 6. Calculate accuracy
 accuracy = accuracy_score(y_test, y_pred)
 
-print(f"Model accuracy: {accuracy:.2f}")
+print(f"Pipeline accuracy: {accuracy:.2f}")
 
 
-# 7. Save the trained model
-joblib.dump(model, "ml/saved_model/model.joblib")
+# 7. Save the complete pipeline
+joblib.dump(
+    pipeline,
+    "ml/saved_model/iris_pipeline.pkl"
+)
 
-print("Model saved successfully!")
+print("Pipeline saved successfully!")

@@ -1,6 +1,7 @@
 import time
 
 from fastapi import APIRouter, Request, HTTPException
+from prometheus_client import Counter
 
 from app.config import settings
 from app.exceptions import PredictionError
@@ -12,7 +13,17 @@ from app.models.schemas import (
     PredictionBatchOutput,
 )
 
+
 logger = setup_logging()
+
+
+# Custom Prometheus metric
+prediction_counter = Counter(
+    "ml_predictions_total",
+    "Total number of successful ML predictions",
+    ["predicted_class"]
+)
+
 
 router = APIRouter(prefix="/api/v1")
 
@@ -48,6 +59,11 @@ def predict(
         probabilities = model.predict_proba(features)
 
         confidence = max(probabilities[0])
+
+        # Increment custom Prometheus metric
+        prediction_counter.labels(
+            predicted_class=str(int(prediction[0]))
+        ).inc()
 
         logger.info(
             f"prediction_success "

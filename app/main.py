@@ -6,6 +6,7 @@ import joblib
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import settings
 from app.exceptions import PredictionError
@@ -32,9 +33,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.API_TITLE,
-    lifespan=lifespan,
-    dependencies=[Depends(verify_api_key)]
+    lifespan=lifespan
 )
+
+
+# Prometheus monitoring
+Instrumentator().instrument(app).expose(app)
 
 
 # CORS configuration
@@ -86,5 +90,13 @@ def root():
     return {"message": "ML API is alive"}
 
 
-app.include_router(v1_router)
-app.include_router(v2_router)
+# API key protection for application endpoints
+app.include_router(
+    v1_router,
+    dependencies=[Depends(verify_api_key)]
+)
+
+app.include_router(
+    v2_router,
+    dependencies=[Depends(verify_api_key)]
+)

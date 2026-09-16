@@ -1,6 +1,7 @@
 import time
 
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from prometheus_client import Counter
 
 from app.config import settings
@@ -39,7 +40,7 @@ def health(request: Request):
 
 
 @router.post("/predict", response_model=PredictionOutput)
-def predict(
+async def predict(
     data: PredictionInput,
     request: Request
 ):
@@ -55,8 +56,16 @@ def predict(
     try:
         model = request.app.state.model
 
-        prediction = model.predict(features)
-        probabilities = model.predict_proba(features)
+        # Run blocking ML operations in a worker thread
+        prediction = await run_in_threadpool(
+            model.predict,
+            features
+        )
+
+        probabilities = await run_in_threadpool(
+            model.predict_proba,
+            features
+        )
 
         confidence = max(probabilities[0])
 
@@ -140,6 +149,12 @@ def predict_batch(
             predictions,
             probabilities
         ):
+            # Count every successful prediction
+            prediction_counter.labels(
+                predicted_class=str(int(prediction))
+            ).inc()
+
+            # Add every prediction to the response
             results.append(
                 PredictionOutput(
                     prediction=int(prediction),
@@ -174,7 +189,6 @@ def predict_batch(
         )
 
         raise PredictionError()
-
 
 @router.get("/model-info")
 def model_info(request: Request):

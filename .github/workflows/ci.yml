@@ -12,6 +12,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      API_KEY: test-api-key
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -47,7 +47,7 @@ print(f"Pipeline accuracy: {accuracy:.2f}")
 # 7. Save the complete pipeline
 joblib.dump(
     pipeline,
-    "ml/saved_model/iris_pipeline.pkl"
+    "ml/saved_model/model_v2.joblib"
 )
 
-print("Pipeline saved successfully!")
+print("Model v2 saved successfully!")

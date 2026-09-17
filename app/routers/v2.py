@@ -33,7 +33,7 @@ def predict_v2(
     ]]
 
     try:
-        model = request.app.state.model
+        model = request.app.state.model_v2
 
         prediction = model.predict(features)
         probabilities = model.predict_proba(features)

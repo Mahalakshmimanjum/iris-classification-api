@@ -361,11 +361,21 @@ Through this project, I learned how to:
 
 ## Independent Extension
 
-### GitHub Actions CI
+### Model Retraining and Versioning
 
-GitHub Actions was added to automatically run the Pytest test suite when code is pushed to GitHub.
+A model retraining script was added in `ml/train.py`.
 
-This helps find errors early and makes the project easier to maintain.
+The script:
+- Loads the Iris dataset
+- Trains a Random Forest model
+- Evaluates model accuracy
+- Saves the retrained model as `model_v2.joblib`
+
+The API uses:
+- V1 → `model.joblib`
+- V2 → `model_v2.joblib`
+
+This allows the project to support model versioning and future retraining without replacing the existing model.
 
 ---
 

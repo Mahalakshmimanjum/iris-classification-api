@@ -25,8 +25,11 @@ async def lifespan(app: FastAPI):
     logger.info(f"Model path: {settings.MODEL_PATH}")
 
     app.state.model = joblib.load(settings.MODEL_PATH)
+    app.state.model_v2 = joblib.load("ml/saved_model/model_v2.joblib")
 
     logger.info("ML model loaded successfully!")
+    logger.info("ML model v2 loaded successfully!")
+
 
     yield
 

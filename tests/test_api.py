@@ -1,6 +1,7 @@
-API_KEY = "my-secret-api-key-123"
-HEADERS = {"X-API-Key": API_KEY}
+import os
 
+API_KEY = os.getenv("API_KEY", "my-secret-api-key-123")
+HEADERS = {"X-API-Key": API_KEY}
 
 def test_health(client):
     response = client.get(

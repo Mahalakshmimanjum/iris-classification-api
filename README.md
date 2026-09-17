@@ -1,35 +1,29 @@
 # Iris Classification API
 
-A Machine Learning API that predicts the species of an iris flower from its measurements.
+A Machine Learning REST API that predicts the species of an iris flower from its measurements.
 
-The API is built using **FastAPI** and a **Scikit-learn Random Forest** model. It also includes API key authentication, input validation, API versioning, testing, logging, monitoring, and model explainability.
+The API is built using **FastAPI** and a **Scikit-learn Random Forest Classifier**.
 
-The application can be run locally or using Docker Compose.
+## Features
 
----
-
-## Project Goal
-
-The goal of this project is to build a complete and production-style Machine Learning API.
-
-The API takes four iris flower measurements:
-
-* Sepal length
-* Sepal width
-* Petal length
-* Petal width
-
-It predicts one of three iris species:
-
-* Setosa
-* Versicolor
-* Virginica
+* Iris flower prediction
+* FastAPI REST API
+* API key authentication
+* Input validation
+* V1 and V2 API versions
+* Batch prediction
+* Automated testing with Pytest
+* Prometheus monitoring
+* Model explainability using LIME
+* Logging
+* Docker and Docker Compose
+* GitHub Actions CI
 
 ---
 
 ## Machine Learning Model
 
-The project uses the **Iris dataset** and a **Random Forest Classifier** from Scikit-learn.
+The project uses the **Iris dataset** and a **Random Forest Classifier**.
 
 The trained model is stored at:
 
@@ -37,17 +31,19 @@ The trained model is stored at:
 ml/saved_model/model.joblib
 ```
 
-The model receives four features and returns the predicted class.
+The model uses four inputs:
 
-Example input:
+* Sepal length
+* Sepal width
+* Petal length
+* Petal width
 
-```json
-{
-  "sepal_length": 5.1,
-  "sepal_width": 3.5,
-  "petal_length": 1.4,
-  "petal_width": 0.2
-}
+It predicts:
+
+```text
+0 = Setosa
+1 = Versicolor
+2 = Virginica
 ```
 
 ---
@@ -60,11 +56,9 @@ Client
   v
 FastAPI
   |
-  v
-API Key Authentication
+  +--> API Key Authentication
   |
-  v
-Input Validation
+  +--> Input Validation
   |
   v
 Prediction Logic
@@ -74,37 +68,44 @@ Random Forest Model
   |
   v
 JSON Response
+
+Monitoring --> Prometheus Metrics
+Testing -----> Pytest
+Deployment --> Docker / Docker Compose
 ```
 
 ---
 
 ## API Endpoints
 
-### Health Check
+| Method | Endpoint                | Description                   |
+| ------ | ----------------------- | ----------------------------- |
+| GET    | `/api/v1/health`        | Check API and model status    |
+| POST   | `/api/v1/predict`       | Predict one flower            |
+| POST   | `/api/v1/predict-batch` | Predict multiple flowers      |
+| GET    | `/api/v1/model-info`    | Get model information         |
+| POST   | `/api/v2/predict`       | Prediction with probabilities |
+| GET    | `/metrics`              | Prometheus metrics            |
+| GET    | `/docs`                 | Swagger documentation         |
 
-```text
-GET /api/v1/health
-```
-
-Checks whether the API and model are available.
-
-Example:
-
-```bash
-curl http://localhost:8000/api/v1/health
-```
+Protected endpoints require the `X-API-Key` header.
 
 ---
 
-### V1 Prediction
+## Example Prediction
 
-```text
-POST /api/v1/predict
+### Request
+
+```json
+{
+  "sepal_length": 5.1,
+  "sepal_width": 3.5,
+  "petal_length": 1.4,
+  "petal_width": 0.2
+}
 ```
 
-Predicts the iris species.
-
-Example:
+### V1 Request
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/predict" ^
@@ -120,21 +121,11 @@ Example response:
   "prediction": 0,
   "confidence": 1,
   "model_version": "1.0",
-  "request_id": "063d772b-16f9-4c38-93af-86ef5284df10"
+  "request_id": "example-request-id"
 }
 ```
 
----
-
-### V2 Prediction
-
-```text
-POST /api/v2/predict
-```
-
-V2 provides an updated response format that includes the probability distribution for the prediction.
-
-Example:
+### V2 Request
 
 ```bash
 curl -X POST "http://localhost:8000/api/v2/predict" ^
@@ -143,172 +134,147 @@ curl -X POST "http://localhost:8000/api/v2/predict" ^
 -d "{\"sepal_length\":5.1,\"sepal_width\":3.5,\"petal_length\":1.4,\"petal_width\":0.2}"
 ```
 
----
-
-### Batch Prediction
-
-```text
-POST /api/v1/predict-batch
-```
-
-Allows multiple iris flower measurements to be predicted in one request.
-
-Example:
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/predict-batch" ^
--H "Content-Type: application/json" ^
--H "X-API-Key: your-secret-api-key" ^
--d "[{\"sepal_length\":5.1,\"sepal_width\":3.5,\"petal_length\":1.4,\"petal_width\":0.2},{\"sepal_length\":6.2,\"sepal_width\":2.8,\"petal_length\":4.8,\"petal_width\":1.8}]"
-```
-
-The maximum batch size is controlled by:
-
-```text
-MAX_BATCH_SIZE
-```
-
----
-
-### Model Information
-
-```text
-GET /api/v1/model-info
-```
-
-Returns information about the loaded machine learning model.
-
-Example:
-
-```bash
-curl -H "X-API-Key: your-secret-api-key" http://localhost:8000/api/v1/model-info
-```
-
----
-
-### Prometheus Metrics
-
-```text
-GET /metrics
-```
-
-Provides application metrics that can be collected by Prometheus.
-
-Example:
-
-```bash
-curl http://localhost:8000/metrics
-```
-
-The metrics include request information and prediction metrics.
-
----
-
-### Swagger Documentation
-
-FastAPI provides interactive API documentation at:
-
-```text
-http://localhost:8000/docs
-```
-
-Swagger UI can be used to test the API endpoints directly.
+V2 also returns the probability information for each class.
 
 ---
 
 ## API Security
 
-Protected endpoints require an API key.
+Protected endpoints use API key authentication.
 
-The API key is sent using the:
-
-```text
-X-API-Key
-```
-
-header.
-
-Example:
+Header:
 
 ```text
 X-API-Key: your-secret-api-key
 ```
 
-If the API key is missing or invalid, the API returns:
-
-```json
-{
-  "detail": "Invalid or missing API key"
-}
-```
-
-with HTTP status:
+If the key is missing or incorrect, the API returns:
 
 ```text
 401 Unauthorized
 ```
 
-The API key is stored in the `.env` file and is not hardcoded in the application code.
+The API key is stored in the `.env` file.
 
 ---
 
 ## Input Validation
 
-The API uses Pydantic for request validation.
+The API uses **Pydantic** for validation.
 
-The prediction input must contain:
-
-```text
-sepal_length
-sepal_width
-petal_length
-petal_width
-```
-
-Validation includes:
+It checks:
 
 * Required fields
 * Numeric values
-* Values greater than zero
-* No unexpected fields
+* Positive values
+* Invalid data types
+* Unexpected fields
 
-Invalid requests return:
+Invalid input returns:
 
 ```text
 422 Unprocessable Entity
 ```
 
-For example, an unexpected field is rejected:
+---
 
-```json
-{
-  "sepal_length": 5.1,
-  "sepal_width": 3.5,
-  "petal_length": 1.4,
-  "petal_width": 0.2,
-  "unexpected_field": "not_allowed"
-}
+## Run with Docker Compose
+
+### 1. Create `.env`
+
+Create a `.env` file in the project root:
+
+```env
+MODEL_PATH=ml/saved_model/model.joblib
+LOG_LEVEL=INFO
+MAX_BATCH_SIZE=100
+API_TITLE=Iris Classification API
+API_KEY=your-secret-api-key
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+Do not commit the `.env` file to GitHub.
+
+### 2. Start the application
+
+```bash
+docker compose up --build
+```
+
+The API will be available at:
+
+```text
+http://localhost:8000
+```
+
+Swagger:
+
+```text
+http://localhost:8000/docs
+```
+
+Metrics:
+
+```text
+http://localhost:8000/metrics
+```
+
+### 3. Stop the application
+
+```bash
+docker compose down
 ```
 
 ---
 
-## CORS
+## Run Tests
 
-CORS is configured using allowed origins from the environment.
+Run the complete test suite:
 
-Example:
-
-```env
-ALLOWED_ORIGINS=http://localhost:3000
+```bash
+python -m pytest -v
 ```
 
-This avoids allowing every browser origin.
+Current result:
+
+```text
+15 tests passed
+```
+
+Check dependencies:
+
+```bash
+pip check
+```
+
+Expected:
+
+```text
+No broken requirements found.
+```
+
+---
+
+## Monitoring
+
+Prometheus metrics are available at:
+
+```text
+http://localhost:8000/metrics
+```
+
+The project tracks:
+
+* HTTP requests
+* Request duration
+* HTTP status codes
+* ML prediction counts
 
 ---
 
 ## Model Explainability
 
-The project includes model explainability using:
+The project uses:
 
 * Random Forest Feature Importance
 * LIME
@@ -317,72 +283,6 @@ Explainability files are stored in:
 
 ```text
 explainability/
-```
-
-Main files include:
-
-```text
-explainability/
-├── explain_model.py
-├── feature_importance.png
-├── lime_sample_1.html
-└── lime_sample_2.html
-```
-
-These files help understand how the model makes predictions.
-
----
-
-## Prediction Data Validation
-
-The project also contains reusable prediction validation logic in:
-
-```text
-app/prediction.py
-```
-
-The function checks:
-
-* Required fields
-* Numeric values
-* Finite values
-* Positive values
-
-Invalid data produces a clear error instead of sending incorrect data to the ML model.
-
----
-
-## Testing
-
-The project uses **Pytest** for automated testing.
-
-Run the tests using:
-
-```bash
-python -m pytest -v
-```
-
-The test suite covers:
-
-* Health endpoint
-* Valid prediction
-* Missing fields
-* Invalid values
-* Batch prediction
-* Batch size limit
-* Model information
-* V1 and V2 response differences
-* Missing API key
-* Invalid API key
-* Unexpected fields
-* Prediction validation
-* Wrong data types
-* Negative values
-
-Current test suite:
-
-```text
-15 tests passed
 ```
 
 ---
@@ -399,10 +299,8 @@ iris-classification-api/
 │   ├── prediction.py
 │   ├── exceptions.py
 │   ├── logging_config.py
-│   │
 │   ├── models/
 │   │   └── schemas.py
-│   │
 │   └── routers/
 │       ├── v1.py
 │       └── v2.py
@@ -412,19 +310,9 @@ iris-classification-api/
 │       └── model.joblib
 │
 ├── explainability/
-│   ├── explain_model.py
-│   ├── feature_importance.png
-│   ├── lime_sample_1.html
-│   └── lime_sample_2.html
-│
 ├── tests/
-│   ├── conftest.py
-│   ├── test_api.py
-│   └── test_prediction.py
-│
 ├── Dockerfile
 ├── docker-compose.yml
-├── .dockerignore
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -432,192 +320,12 @@ iris-classification-api/
 
 ---
 
-# How to Run the Project
-
-## Prerequisites
-
-Install:
-
-* Python 3.13
-* Docker Desktop
-* Docker Compose
-
----
-
-## Environment Variables
-
-Create a `.env` file in the project root.
-
-Example:
-
-```env
-MODEL_PATH=ml/saved_model/model.joblib
-LOG_LEVEL=INFO
-MAX_BATCH_SIZE=100
-API_TITLE=Iris Classification API
-API_KEY=your-secret-api-key
-ALLOWED_ORIGINS=http://localhost:3000
-```
-
-Use your own secure value for `API_KEY`.
-
-Do not commit the `.env` file to GitHub.
-
----
-
-# Run with Docker Compose
-
-Build and start the application:
-
-```bash
-docker compose up --build
-```
-
-The API will be available at:
-
-```text
-http://localhost:8000
-```
-
-Open Swagger:
-
-```text
-http://localhost:8000/docs
-```
-
-Open metrics:
-
-```text
-http://localhost:8000/metrics
-```
-
----
-
-## Stop the Application
-
-```bash
-docker compose down
-```
-
----
-
-# Run Tests Locally
-
-Activate the virtual environment and run:
-
-```bash
-python -m pytest -v
-```
-
-You can also check installed dependencies:
-
-```bash
-pip check
-```
-
-Expected result:
-
-```text
-No broken requirements found.
-```
-
----
-
-# Docker
-
-The application is containerized using Docker.
-
-Basic flow:
-
-```text
-Python Base Image
-       ↓
-Install Dependencies
-       ↓
-Copy Application
-       ↓
-Load ML Model
-       ↓
-Start Uvicorn
-       ↓
-FastAPI Application
-```
-
-The application runs on port:
-
-```text
-8000
-```
-
-Docker Compose is used to make the project easier to run.
-
----
-
-# Monitoring
-
-The project includes Prometheus monitoring using:
-
-```text
-prometheus-fastapi-instrumentator
-prometheus-client
-```
-
-Metrics are available at:
-
-```text
-http://localhost:8000/metrics
-```
-
-The metrics can be collected by Prometheus for monitoring API requests, response information, and prediction activity.
-
----
-
-# Logging
-
-The application includes logging using Python's logging module.
-
-Logs help track:
-
-* API requests
-* Application events
-* Errors
-* Model loading
-
-Rotating log files are used to avoid unlimited log file growth.
-
----
-
-# API Versioning
-
-The project supports two API versions.
-
-### V1
-
-```text
-/api/v1/predict
-```
-
-Returns the original prediction response.
-
-### V2
-
-```text
-/api/v2/predict
-```
-
-Returns an updated response that includes probability information.
-
-This demonstrates how API versioning can be used when the response format changes.
-
----
-
-# Technologies Used
+## Technologies Used
 
 * Python
 * FastAPI
 * Uvicorn
 * Pydantic
-* Pydantic Settings
 * NumPy
 * Scikit-learn
 * Joblib
@@ -628,49 +336,60 @@ This demonstrates how API versioning can be used when the response format change
 * Prometheus
 * Docker
 * Docker Compose
+* GitHub Actions
 
 ---
 
-# What I Learned
+## What I Learned
 
-During this project, I learned how to:
+Through this project, I learned how to:
 
 * Build a Machine Learning API using FastAPI
-* Load and use a trained Scikit-learn model
-* Create API request and response schemas
-* Validate user input using Pydantic
-* Protect API endpoints using API key authentication
-* Create API versions using FastAPI routers
-* Create batch prediction endpoints
-* Handle API errors and exceptions
-* Add logging to a FastAPI application
-* Write automated tests using Pytest
+* Use a trained Scikit-learn model
+* Validate API input
+* Add API key authentication
+* Create API versions
+* Build batch prediction APIs
+* Write tests using Pytest
 * Add Prometheus monitoring
-* Add model explainability using LIME
-* Containerize an application using Docker
-* Run the application using Docker Compose
-* Manage application configuration using environment variables
-* Maintain project dependencies using `requirements.txt`
+* Add model explainability
+* Use Docker and Docker Compose
+* Manage configuration using environment variables
+* Use GitHub Actions for automated testing
 
 ---
 
-# Project Status
+## Independent Extension
 
-The project currently includes:
+### GitHub Actions CI
 
-* FastAPI ML API
-* Random Forest Iris model
-* V1 and V2 API endpoints
-* Batch prediction
-* API key authentication
+GitHub Actions was added to automatically run the Pytest test suite when code is pushed to GitHub.
+
+This helps find errors early and makes the project easier to maintain.
+
+---
+
+## Project Status
+
+The project includes:
+
+* Machine Learning API
+* API security
 * Input validation
-* Error handling
-* Logging
+* API versioning
+* Batch prediction
 * Automated testing
-* Prometheus metrics
+* Monitoring
 * Model explainability
+* Logging
 * Docker
 * Docker Compose
-* Project documentation
+* GitHub Actions CI
 
-The project is ready for the final deployment and completion steps.
+The application can be run locally with:
+
+```bash
+docker compose up --build
+```
+
+The project is complete and ready for final review.
